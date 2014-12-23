@@ -1,0 +1,32 @@
+/* here you can put your own css to customize and override the theme */
+.search_table > thead > tr > th,
+.search_table > tbody > tr > th,
+.search_table > thead > tr > td,
+.search_table > tbody > tr > td {
+  padding: 4px;
+  line-height: 1.428571429;
+  vertical-align: top;
+  border-top: 1px solid #dddddd;
+}
+.search_table > thead > tr > th,
+.search_table > tbody > tr > th{
+	padding-top:12px;
+}
+.wraper{
+    width:960px;
+    margin:0 auto
+}
+.top_arrow{
+    border:0 none;
+    bottom:150px;
+    cursor:pointer;
+    display:none;
+    height:auto;
+    margin:0;
+    opacity:0.7;
+    padding:0;
+    position:fixed;
+    right:40px;
+    width:35px;
+    z-index:2147483647;
+}

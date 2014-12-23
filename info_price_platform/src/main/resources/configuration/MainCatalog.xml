@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<MainCatalog>
+	<sys_modules>
+		<sys_module>
+			<code>0</code>
+			<id>0</id>
+			<name>定额管理</name>
+		</sys_module>
+		<sys_module>
+			<code>1</code>
+			<id>1</id>
+			<name>其他</name>
+		</sys_module>
+	</sys_modules>
+	<sys_menus>
+		<sys_menu>
+			<code>0</code>
+			<sysModuleId>0</sysModuleId>
+			<name>定额管理</name>
+			<en>quota management</en>
+			<view>quotamgr/quotaMgr</view>
+			<controllerName>/home?module_code=0&amp;menu_code=0</controllerName>
+		</sys_menu>
+		<sys_menu>
+			<code>1</code>
+			<sysModuleId>0</sysModuleId>
+			<name>其他</name>
+			<en>quota management</en>
+			<view>index</view>
+			<controllerName>/home?module_code=0&amp;menu_code=1</controllerName>
+		</sys_menu>
+	</sys_menus>
+</MainCatalog>

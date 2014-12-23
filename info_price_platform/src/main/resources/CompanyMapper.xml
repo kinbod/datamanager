@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.gcj.dao.CompanyMapper">
+
+   <cache type="org.mybatis.caches.ehcache.EhcacheCache"/>
+   <cache>
+    <property name="timeToIdleSeconds" value="3600"/>
+    <property name="timeToLiveSeconds" value="3600"/>
+    <property name="maxEntriesLocalHeap" value="1000"/>
+    <property name="maxEntriesLocalDisk" value="10000000"/>
+    <property name="memoryStoreEvictionPolicy" value="LRU"/>
+  </cache>
+  <cache type="org.mybatis.caches.ehcache.LoggingEhcache"/>
+	
+	
+
+	<!-- 根据ID查询供应商信息 -->
+<!-- 	<select id="selectCompanyInfoById" resultMap="BaseResultMap" -->
+<!-- 		parameterType="Long"> -->
+<!-- 		SELECT -->
+<!-- 		A.id, A.name, A.website, A.phone, B.name AS location_area -->
+<!-- 		FROM companies A -->
+<!-- 		LEFT JOIN locations B ON B.area_code = A.location_area_code -->
+<!-- 		WHERE id = #{id} -->
+<!-- 	</select> -->
+	
+	
+
+	<select id="getCompaniesListPage" parameterType="map"
+		resultType="company">
+		select c.id id,c.name name,c.quality_grade as qualityGrade,cai.audit_time as auditTime,cai.is_urgency as isUrgency,
+		cai.original as original ,cai.process_status as processStatus,
+		c.cooperation_status cooperationStatus,
+		c.ass_cert_enterprise as assCertEnterprise
+		,c.business_type as businessType,cai.e_user_id as  eUserId,cai.charge_user_id as userId
+		page_from companies c inner join company_additional_infos cai on cai.company_id=c.id
+		
+		where c.is_delete=0 
+			<if test="(waitContact !=null and waitContact !='') or companys !=null">
+				<choose>
+					<when test="'noCompanys'==waitContact">
+					    and 1=2
+					</when>
+					<otherwise>
+						and c.id in 
+						<foreach collection="companys" close=")" open="(" separator="," item="item">
+						 	#{item.id}
+						</foreach>
+					</otherwise>
+				</choose>
+			</if>
+		<if test="company!=null">
+			<!-- 供应商名称 -->
+			<if test="company.name !=null and company.name!=''">
+				and c.name like CONCAT('%',#{company.name},'%')
+			</if>
+			<!-- 联系人 -->
+			<if test="company.contactPerson!=null and company.contactPerson!=''">
+				and (select count(cp.id) from contact_people cp
+				where cp.resource_type='company' and cp.resource_id=c.id and cp.name like
+				CONCAT('%',#{company.contactPerson},'%'))>0
+			</if>
+			<!-- 联系人电话 -->
+			<if test="company.contactPhone!=null and company.contactPhone!=''">
+				and (select count(cp.id) from contact_people cp
+				where cp.resource_type='company' and cp.resource_id=c.id and
+				cp.mobile_phone like CONCAT('%',#{company.contactPhone},'%' ))>0
+			</if>
+			<!-- 供应商状态 -->
+			<if
+				test="company.cooperationStatus !=null and company.cooperationStatus!=''">
+				and c.cooperation_status=#{company.cooperationStatus}
+			</if>
+
+			<!-- 供应商来源 -->
+			<if test="company.original !=null and company.original!=''">
+				and cai.original in (
+				select chi_d1.code from dictionary chi_d left join dictionary chi_d1 on
+				chi_d1.type_code=chi_d.code
+				where chi_d.type_code='original' and chi_d.code=#{company.original})
+			</if>
+			<!-- 经营模式 -->
+			<if test="company.businessType !=null and company.businessType!=''">
+				and c.business_type=#{company.businessType}
+			</if>
+			<!-- 处理状态 -->
+			<if test="company.processStatus !=null and company.processStatus!=''">
+				and cai.process_status=#{company.processStatus}
+			</if>
+			<!-- 创建时间 -->
+			<if test="company.startTime !=null and company.startTime !=''">
+				and TO_DAYS(c.created_at)>=TO_DAYS(#{company.startTime})
+			</if>
+			<if test="company.endTime !=null and company.endTime !=''">
+				and TO_DAYS(#{company.endTime}) >= TO_DAYS(c.created_at)
+			</if>
+			<!-- 所在区域 -->
+			<choose>
+				<!-- 全国 -->
+				<when test="company.parentLocationAreaCode == 1">
+				</when>
+				<when
+					test="company.locationAreaCode !=null and company.locationAreaCode!=''">
+					and c.location_area_code=${company.locationAreaCode}
+				</when>
+				<!-- 所在区域：省 -->
+				<when
+					test="company.parentLocationAreaCode !=null and company.parentLocationAreaCode!=''">
+					and c.location_area_code in (select ch_l.area_code
+					from locations ch_l
+					where ch_l.parent_area_code=#{company.parentLocationAreaCode})
+				</when>
+			</choose>
+			<!-- 所属类别 -->
+			<if test="company.operateCategory !=null and company.operateCategory!=''">
+				and c.operate_category=#{company.operateCategory}
+			</if>
+			<!-- 质量等级 -->
+			<if test="company.qualityGrade !=null">
+				and c.quality_grade=${company.qualityGrade}
+			</if>
+			<!-- 品牌 -->
+			<if test="company.brandName !=null and company.brandName !=''">
+				and c.id in ( select distinct ch_cb.company_id
+				from company_brands ch_cb,brands ch_b
+				where ch_cb.brand_id = ch_b.id and
+				ch_b.name like CONCAT('%','${company.brandName}','%' )
+				)
+			</if>
+			<!-- 材料类别 -->
+			<choose>
+				<when
+					test="company.secondMaterialTypes !=null and company.secondMaterialTypes!=''">
+					and c.id in (select distinct ch_cmt.company_id
+					from company_material_types ch_cmt
+					where ch_cmt.base_material_type_id in (
+					select ch_bmt.id
+					from base_material_types ch_bmt
+					where ch_bmt.code=${company.secondMaterialTypes}) )
+				</when>
+				<when
+					test="company.firstMaterialTypes !=null and company.firstMaterialTypes!=''">
+					and c.id in (select distinct ch_cmt.company_id
+					from company_material_types ch_cmt
+					where ch_cmt.base_material_type_id in (
+					select ch_bmt1.id
+					from base_material_types ch_bmt,base_material_types ch_bmt1
+					where ch_bmt.id=ch_bmt1.parent_id and
+					ch_bmt.code=${company.firstMaterialTypes}
+					) )
+				</when>
+			</choose>
+			<!-- 联系状态 -->
+			<if test="company.contactType !=null and company.contactType !=''">
+				<if test="company.contactType =='expand'">
+					and (c.cooperation_status='no_cooperation' or
+					c.cooperation_status='pending' )
+				</if>
+				<if test="company.contactType =='relationship'">
+					and c.cooperation_status='cooperation'
+					<choose>
+						<when test="company.contactStatus=='wait_contact'"><!-- 待维护 -->
+							and 0=(select count(ch_cr.id)
+							from contact_records ch_cr
+							where ch_cr.created_at>=(select start_time
+							from company_cycles
+							where TO_DAYS(now())>=TO_DAYS(start_time)
+							and TO_DAYS(end_time)>= TO_DAYS(now())
+							and company_id=c.id
+							) and ch_cr.company_id=c.id)
+						</when>
+						<when test="company.contactStatus!=null and company.contactStatus!=''">
+							and #{company.contactStatus}=(select ch_cr.contact_status
+							from contact_records ch_cr
+							where ch_cr.created_at>=(
+							select start_time
+							from company_cycles
+							where TO_DAYS(now())>=TO_DAYS(start_time)
+							and TO_DAYS(end_time)>=TO_DAYS(now())
+							and company_id=c.id
+							) and ch_cr.company_id=c.id
+							order by ch_cr.created_at desc
+							limit 0,1
+							)
+						</when>
+					</choose>
+				</if>
+			</if>
+			<!-- 负责人 -->
+			<choose>
+				<when test="company.userId !=null and company.userId!=''">
+					and cai.charge_user_id=#{company.userId}
+				</when>
+				<when test="company.userGroupId !=null and company.userGroupId!=''">
+					and cai.charge_user_id in (select gr_us.admin_users_id
+					from opers_group_admin_users gr_us
+					where gr_us.opers_group_id=#{company.userGroupId} )
+				</when>
+			</choose>
+			<if test="groupUsers !=null">
+					and cai.charge_user_id in 
+					<foreach collection="groupUsers" item="item" index="index" close=")" open="(" separator=",">
+						#{item}
+					</foreach>
+			</if>
+			<!-- 拓展地区 -->
+			<choose>
+				<!-- 全国 -->
+				<when test="company.parentExpandAreaCode==1">
+
+				</when>
+				<!-- 拓展地区：市 -->
+				<when test="company.expandAreaCode !=null and company.expandAreaCode!=''">
+					and c.expand_area_code=${company.expandAreaCode}
+				</when>
+				<!-- 拓展地区：省 -->
+				<when
+					test="company.parentExpandAreaCode !=null and company.parentExpandAreaCode!=''">
+					and c.location_area_code in (select ch_l.area_code
+					from locations ch_l
+					where ch_l.parent_area_code=#{company.parentExpandAreaCode})
+				</when>
+			</choose>
+			<!-- 进入审核时间 -->
+			<if test="company.auditStartTime !=null and company.auditStartTime !=''">
+				and TO_DAYS(cai.audit_time)>=TO_DAYS(#{company.auditStartTime})
+			</if>
+			<if test="company.auditEndTime !=null and company.auditEndTime !=''">
+				and TO_DAYS(#{company.auditEndTime}) >= TO_DAYS(cai.audit_time)
+			</if>
+			<if test="company.companyAdditionalInfo!=null">
+				<if test="company.companyAdditionalInfo.isUrgency">
+					and
+					cai.is_urgency=#{company.companyAdditionalInfo.isUrgency,jdbcType=BIT}
+				</if>
+			</if>
+		</if>
+		page_order by 
+		<if test="company.processStatus!=null and company.processStatus=='not_through_review'">
+			cai.is_urgency desc,
+		</if>
+			 c.updated_at desc
+	</select>
+
+	
+</mapper>

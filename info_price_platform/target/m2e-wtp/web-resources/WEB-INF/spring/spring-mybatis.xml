@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2010 The myBatis Team Licensed under the Apache License, Version 
+	2.0 (the "License"); you may not use this file except in compliance with 
+	the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 
+	Unless required by applicable law or agreed to in writing, software distributed 
+	under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES 
+	OR CONDITIONS OF ANY KIND, either express or implied. See the License for 
+	the specific language governing permissions and limitations under the License. -->
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.1.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.0.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd">
+
+	<!-- 加载jdbc连接池文件 -->
+    <context:property-placeholder location="classpath:property/init.properties"/>
+    <!-- 配置dbcp数据源 -->
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <!--         Connection Info -->
+        <property name="driverClassName" value="${jdbc.dbcp.dataSource.driverClassName}" />
+        <property name="url" value="${jdbc.dbcp.dataSource.url}" />
+        <property name="username" value="${jdbc.dbcp.dataSource.username}"/>
+        <property name="password" value="${jdbc.dbcp.dataSource.password}" />
+        
+        <!--         Connection Pooling DBCP -->
+        <property name="initialSize" value="${jdbc.dbcp.dataSource.initialSize}" />
+        <property name="maxActive" value="${jdbc.dbcp.dataSource.maxActive}" />
+        <property name="maxIdle" value="${jdbc.dbcp.dataSource.maxIdle}" />
+        <property name="maxWait" value="${jdbc.dbcp.dataSource.maxWait}" />
+        <property name="poolPreparedStatements" value="${jdbc.dbcp.dataSource.poolPreparedStatements}" />
+        <property name="defaultAutoCommit" value="${jdbc.dbcp.dataSource.defaultAutoCommit}" />
+        <!--         是否自动回收超时连接 -->
+        <property name="removeAbandoned" value="${jdbc.dbcp.dataSource.removeAbandoned}" />
+        <!--         removeAbandonedTimeout: 超时时间(以秒数为单位)  -->
+		<property name="removeAbandonedTimeout" value="180"/>  
+    </bean>
+    
+     <!-- 对数据源进行事务管理 -->
+    <bean id="transactionManager"
+        class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource" />
+    </bean>
+
+	<!-- define the SqlSessionFactory -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="configLocation" value="classpath:mybatis-conf.xml" />
+		<property name="typeAliasesPackage" value="com.gcj.entity" />
+	</bean>
+
+	<!-- scan for mappers and let them be autowired -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="basePackage" value="com.gcj.dao" />
+	</bean>
+
+	<!-- 配置事务异常封装 -->
+	<bean id="persistenceExceptionTranslationPostProcessor"
+		class="org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor" />   
+		 
+    <!-- spring declarative transaction management -->
+	<aop:config expose-proxy="true">    
+	   <aop:pointcut id="pc" expression="execution(public * com.gcj.service.*.*(..))" /> 
+	   <aop:advisor pointcut-ref="pc" advice-ref="txAdvice" />
+    </aop:config>
+    
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+    	<tx:attributes>
+    		<!-- 接收审核结果 序列化事务 -->
+    		<tx:method name="processAuditResult" propagation="REQUIRED" read-only="false" rollback-for="java.lang.Exception" isolation="SERIALIZABLE"/>
+    		<tx:method name="add*" propagation="REQUIRED" read-only="false" rollback-for="java.lang.Exception" />
+      		<tx:method name="delete*" propagation="REQUIRED" read-only="false" rollback-for="java.lang.Exception" />  		
+		    <tx:method name="update*" propagation="REQUIRED" read-only="false" rollback-for="java.lang.Exception" />
+		    <tx:method name="save*"  propagation="REQUIRED"  read-only="false" rollback-for="java.lang.Exception" />  
+	        <tx:method name="create*"  propagation="REQUIRED"  read-only="false" rollback-for="java.lang.Exception" />  
+	        <tx:method name="insert*"  propagation="REQUIRED"  read-only="false" rollback-for="java.lang.Exception" />
+	        <tx:method name="set*"   propagation="REQUIRED"  read-only="false" rollback-for="java.lang.Exception" />  
+	        <tx:method name="batch*"  propagation="REQUIRED"  read-only="false" rollback-for="java.lang.Exception" />  
+		    <tx:method name="find*" read-only="true"/>
+		    <tx:method name="get*" read-only="true"/>
+		    <tx:method name="select*" read-only="true"/>
+    	</tx:attributes>
+    </tx:advice>
+	
+</beans>
